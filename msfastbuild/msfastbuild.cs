@@ -518,27 +518,27 @@ namespace msfastbuild
 
 			OutputString.Append(CompilerString);
 
-			if (ActiveProject.GetItems("PreBuildEvent").Any())
-			{
-				var buildEvent = ActiveProject.GetItems("PreBuildEvent").First();
-				if (buildEvent.Metadata.Any())
-				{
-					var mdPi = buildEvent.Metadata.First();
-					if(!string.IsNullOrEmpty(mdPi.EvaluatedValue))
-					{
-						string BatchText = "call \"" + VCBasePath + "Auxiliary\\Build\\vcvarsall.bat\" "
-							+ (Platform == "Win32" ? "x86" : "x64") + " " + WindowsSDKTarget + "\n";
-						PreBuildBatchFile = Path.Combine(ActiveProject.DirectoryPath, Path.GetFileNameWithoutExtension(ActiveProject.FullPath) + "_prebuild.bat");
-						File.WriteAllText(PreBuildBatchFile, BatchText + mdPi.EvaluatedValue);						
-						OutputString.Append("Exec('prebuild') \n{\n");
-						OutputString.AppendFormat("\t.ExecExecutable = '{0}' \n", PreBuildBatchFile);
-						OutputString.AppendFormat("\t.ExecInput = '{0}' \n", PreBuildBatchFile);
-						OutputString.AppendFormat("\t.ExecOutput = '{0}' \n", PreBuildBatchFile + ".txt");
-						OutputString.Append("\t.ExecUseStdOutAsOutput = true \n");
-						OutputString.Append("}\n\n");
-					}
-				}
-			}
+			//if (ActiveProject.GetItems("PreBuildEvent").Any())
+			//{
+			//	var buildEvent = ActiveProject.GetItems("PreBuildEvent").First();
+			//	if (buildEvent.Metadata.Any())
+			//	{
+			//		var mdPi = buildEvent.Metadata.First();
+			//		if(!string.IsNullOrEmpty(mdPi.EvaluatedValue))
+			//		{
+			//			string BatchText = "call \"" + VCBasePath + "Auxiliary\\Build\\vcvarsall.bat\" "
+			//				+ (Platform == "Win32" ? "x86" : "x64") + " " + WindowsSDKTarget + "\n";
+			//			PreBuildBatchFile = Path.Combine(ActiveProject.DirectoryPath, Path.GetFileNameWithoutExtension(ActiveProject.FullPath) + "_prebuild.bat");
+			//			File.WriteAllText(PreBuildBatchFile, BatchText + mdPi.EvaluatedValue);						
+			//			OutputString.Append("Exec('prebuild') \n{\n");
+			//			OutputString.AppendFormat("\t.ExecExecutable = '{0}' \n", PreBuildBatchFile);
+			//			OutputString.AppendFormat("\t.ExecInput = '{0}' \n", PreBuildBatchFile);
+			//			OutputString.AppendFormat("\t.ExecOutput = '{0}' \n", PreBuildBatchFile + ".txt");
+			//			OutputString.Append("\t.ExecUseStdOutAsOutput = true \n");
+			//			OutputString.Append("}\n\n");
+			//		}
+			//	}
+			//}
 
 			string CompilerOptions = "";
 
