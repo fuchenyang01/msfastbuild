@@ -247,7 +247,8 @@ namespace msfastbuild
 								if (ProjRef.GetMetadataValue("ReferenceOutputAssembly") == "true" || ProjRef.GetMetadataValue("LinkLibraryDependencies") == "true")
 								{
 									//Console.WriteLine(string.Format("{0} referenced by {1}.", Path.GetFileNameWithoutExtension(ProjRef.EvaluatedInclude), Path.GetFileNameWithoutExtension(proj.FullPath)));
-									EvaluateProjectReferences(Path.GetDirectoryName(proj.FullPath) + Path.DirectorySeparatorChar + ProjRef.EvaluatedInclude, evaluatedProjects, newProj);
+									//EvaluateProjectReferences(Path.GetDirectoryName(proj.FullPath) + Path.DirectorySeparatorChar + ProjRef.EvaluatedInclude, evaluatedProjects, newProj);
+									EvaluateProjectReferences(ProjRef.EvaluatedInclude, evaluatedProjects, newProj);
 								}
 							}
 							//Console.WriteLine("Adding " + Path.GetFileNameWithoutExtension(proj.FullPath));
@@ -523,27 +524,35 @@ namespace msfastbuild
 
 			OutputString.Append(CompilerString);
 
-			//if (ActiveProject.GetItems("PreBuildEvent").Any())
-			//{
-			//	var buildEvent = ActiveProject.GetItems("PreBuildEvent").First();
-			//	if (buildEvent.Metadata.Any())
-			//	{
-			//		var mdPi = buildEvent.Metadata.First();
-			//		if(!string.IsNullOrEmpty(mdPi.EvaluatedValue))
-			//		{
-			//			string BatchText = "call \"" + VCBasePath + "Auxiliary\\Build\\vcvarsall.bat\" "
-			//				+ (Platform == "Win32" ? "x86" : "x64") + " " + WindowsSDKTarget + "\n";
-			//			PreBuildBatchFile = Path.Combine(ActiveProject.DirectoryPath, Path.GetFileNameWithoutExtension(ActiveProject.FullPath) + "_prebuild.bat");
-			//			File.WriteAllText(PreBuildBatchFile, BatchText + mdPi.EvaluatedValue);						
-			//			OutputString.Append("Exec('prebuild') \n{\n");
-			//			OutputString.AppendFormat("\t.ExecExecutable = '{0}' \n", PreBuildBatchFile);
-			//			OutputString.AppendFormat("\t.ExecInput = '{0}' \n", PreBuildBatchFile);
-			//			OutputString.AppendFormat("\t.ExecOutput = '{0}' \n", PreBuildBatchFile + ".txt");
-			//			OutputString.Append("\t.ExecUseStdOutAsOutput = true \n");
-			//			OutputString.Append("}\n\n");
-			//		}
-			//	}
-			//}
+			if (ActiveProject.GetItems("PreBuildEvent").Any()|| ActiveProject.GetItems("CustomBuild").Any())
+			{
+				var buildEvents = new List<ProjectItem>();
+				buildEvents.AddRange(ActiveProject.GetItems("PreBuildEvent"));
+				buildEvents.AddRange(ActiveProject.GetItems("CustomBuild"));
+				if (buildEvents.Exists(b=>b.Metadata.ToList().Exists(t => t.Name == "Command")))
+				{
+					string BatchText = "call \"" + VCBasePath + "Auxiliary\\Build\\vcvarsall.bat\" "
+										+ (Platform == "Win32" ? "x86" : "x64") + " " + WindowsSDKTarget + "\n";
+					PreBuildBatchFile = Path.Combine(ActiveProject.DirectoryPath, Path.GetFileNameWithoutExtension(ActiveProject.FullPath) + "_prebuild.bat");
+					File.WriteAllText(PreBuildBatchFile, BatchText);
+					foreach (var buildEvent in buildEvents)
+					{
+						foreach (var mdPi in buildEvent.Metadata)
+						{
+							if (mdPi.Name == "Command" && !string.IsNullOrEmpty(mdPi.EvaluatedValue))
+							{
+								File.AppendAllText(PreBuildBatchFile, mdPi.EvaluatedValue + "\n");
+							}
+						}
+					}
+					OutputString.Append("Exec('prebuild') \n{\n");
+					OutputString.AppendFormat("\t.ExecExecutable = '{0}' \n", PreBuildBatchFile);
+					OutputString.AppendFormat("\t.ExecInput = '{0}' \n", PreBuildBatchFile);
+					OutputString.AppendFormat("\t.ExecOutput = '{0}' \n", PreBuildBatchFile + ".txt");
+					OutputString.Append("\t.ExecUseStdOutAsOutput = true \n");
+					OutputString.Append("}\n\n");
+				}
+			}
 
 			string CompilerOptions = "";
 

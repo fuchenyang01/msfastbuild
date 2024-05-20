@@ -19,7 +19,7 @@ namespace msfastbuildvsix
 		private bool FBUnity = false;
 
 	#if FASTBUILD_VS2019
-		private bool FBQuiet = true;
+		private bool FBQuiet = false;
 	#else
 		private bool FBQuiet = false;
 	#endif
