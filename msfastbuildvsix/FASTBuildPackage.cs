@@ -16,7 +16,8 @@ namespace msfastbuildvsix
 	{
 		private string FBArgs = "-dist -ide -monitor";
 		private string FBPath = "FBuild.exe";
-		private bool FBUnity = false;
+        private string FBmsfastbuildPath = "msfastbuild.exe";
+        private bool FBUnity = false;
 
 	#if FASTBUILD_VS2019
 		private bool FBQuiet = false;
@@ -59,7 +60,15 @@ namespace msfastbuildvsix
 			get { return FBQuiet; }
 			set { FBQuiet = value; }
 		}
-	}
+        [Category("Options")]
+        [DisplayName("msfastbuild.exe path")]
+        [Description("Specify the path to msfastbuild.exe")]
+        public string OptionFBmsfastbuildPath
+        {
+            get { return FBmsfastbuildPath; }
+            set { FBmsfastbuildPath = value; }
+        }
+    }
 
 	[PackageRegistration(UseManagedResourcesOnly = true)]
 	[InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)] // Info on this package for Help/About
@@ -123,14 +132,21 @@ namespace msfastbuildvsix
 				return page.OptionFBQuiet;
 			}
 		}
+        public string OptionFBmsfastbuildPath
+        {
+            get
+            {
+                OptionPageGrid page = (OptionPageGrid)GetDialogPage(typeof(OptionPageGrid));
+                return page.OptionFBmsfastbuildPath;
+            }
+        }
+        #region Package Members
 
-		#region Package Members
-
-		/// <summary>
-		/// Initialization of the package; this method is called right after the package is sited, so this is the place
-		/// where you can put all the initialization code that rely on services provided by VisualStudio.
-		/// </summary>
-		protected override void Initialize()
+        /// <summary>
+        /// Initialization of the package; this method is called right after the package is sited, so this is the place
+        /// where you can put all the initialization code that rely on services provided by VisualStudio.
+        /// </summary>
+        protected override void Initialize()
 		{
 			FASTBuild.Initialize(this);
 			base.Initialize();

@@ -222,8 +222,9 @@ namespace msfastbuildvsix
 				fbCommandLine += " -q true";
 			}
 
-			string msfastbuildPath = Assembly.GetAssembly(typeof(msfastbuild.msfastbuild)).Location;
-			try
+            //string msfastbuildPath = Assembly.GetAssembly(typeof(msfastbuild.msfastbuild)).Location;
+            string msfastbuildPath = fbPackage.OptionFBmsfastbuildPath;
+            try
 			{
 				fbPackage.m_outputPane.OutputString("Launching msfastbuild with command line: " + fbCommandLine + "\r");
 
