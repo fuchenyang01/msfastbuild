@@ -200,7 +200,23 @@ namespace msfastbuild
 					if (HasCompileActions && !ExecuteBffFile(CurrentProject.Proj.FullPath, CommandLineOptions.Platform))
 						break;
 					else
-						ProjectsBuilt++;
+					{
+                        //生成tlog用于MSBuild增量编译
+                        string contents = $"{CommandLineOptions.Config}|{CommandLineOptions.Platform}|{SolutionDir.Replace('/', '\\')}|";
+                        string IntDir = CurrentProject.Proj.GetProperty("IntDir").EvaluatedValue;
+                        string projectname = CurrentProject.Proj.GetProperty("ProjectName").EvaluatedValue;
+                        string tlogDir = $"{CurrentProject.Proj.DirectoryPath}\\{IntDir}{projectname}.tlog";
+                        if (Directory.Exists(tlogDir))
+                        {
+                            File.WriteAllText($"{tlogDir}\\{projectname}.lastbuildstate", contents);
+                            //删除unsuccessfulbuild
+                            if (File.Exists($"{tlogDir}\\unsuccessfulbuild"))
+                            {
+                                File.Delete($"{tlogDir}\\unsuccessfulbuild");
+                            }
+                        }
+                        ProjectsBuilt++;
+                    }
 				}
 			}
 
