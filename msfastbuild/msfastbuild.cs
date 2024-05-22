@@ -96,7 +96,7 @@ namespace msfastbuild
 			public string AdditionalLinkInputs = "";
 		}
 
-		static void Main(string[] args)
+		static public void Run(string[] args)
 		{
 			Parser parser = new Parser();
 			if (!parser.ParseArguments(args, CommandLineOptions))
