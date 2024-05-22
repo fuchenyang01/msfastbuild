@@ -10,6 +10,7 @@ using System.Reflection;
 using System.IO;
 using EnvDTE;
 using EnvDTE80;
+using System.Runtime.InteropServices;
 
 namespace msfastbuildvsix
 {
@@ -25,11 +26,11 @@ namespace msfastbuildvsix
 		public const int SlnCommandId = 0x0101;
 		public const int ContextCommandId = 0x0102;
 		public const int SlnContextCommandId = 0x0103;
-
-		/// <summary>
-		/// Command menu group (command set GUID).
-		/// </summary>
-		public static readonly Guid CommandSet = new Guid("7c132991-dea1-4719-8c67-c20b24b6775c");
+        public const int CancelCommandId = 0x0108;
+        /// <summary>
+        /// Command menu group (command set GUID).
+        /// </summary>
+        public static readonly Guid CommandSet = new Guid("7c132991-dea1-4719-8c67-c20b24b6775c");
 
         /// <summary>
         /// VS Package that provides this command, not null.
@@ -68,7 +69,11 @@ namespace msfastbuildvsix
 				menuCommandID = new CommandID(CommandSet, SlnContextCommandId);
 				menuItem = new MenuCommand(this.MenuItemCallback, menuCommandID);
 				commandService.AddCommand(menuItem);
-			}
+
+                menuCommandID = new CommandID(CommandSet, CancelCommandId);
+                menuItem = new MenuCommand(this.MenuItemCallback, menuCommandID);
+                commandService.AddCommand(menuItem);
+            }
 		}
 
 		/// <summary>
@@ -128,15 +133,25 @@ namespace msfastbuildvsix
 			}
 			return false;
 		}
-
-		/// <summary>
-		/// This function is the callback used to execute the command when the menu item is clicked.
-		/// See the constructor to see how the menu item is associated with this function using
-		/// OleMenuCommandService service and MenuCommand class.
-		/// </summary>
-		/// <param name="sender">Event sender.</param>
-		/// <param name="e">Event args.</param>
-		private void MenuItemCallback(object sender, EventArgs e)
+        internal const int CTRL_C_EVENT = 0;
+        [DllImport("kernel32.dll")]
+        internal static extern bool GenerateConsoleCtrlEvent(uint dwCtrlEvent, uint dwProcessGroupId);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        internal static extern bool AttachConsole(uint dwProcessId);
+        [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+        internal static extern bool FreeConsole();
+        [DllImport("kernel32.dll")]
+        static extern bool SetConsoleCtrlHandler(ConsoleCtrlDelegate HandlerRoutine, bool Add);
+        // Delegate type to be used as the Handler Routine for SCCH
+        delegate Boolean ConsoleCtrlDelegate(uint CtrlType);
+        /// <summary>
+        /// This function is the callback used to execute the command when the menu item is clicked.
+        /// See the constructor to see how the menu item is associated with this function using
+        /// OleMenuCommandService service and MenuCommand class.
+        /// </summary>
+        /// <param name="sender">Event sender.</param>
+        /// <param name="e">Event args.</param>
+        private void MenuItemCallback(object sender, EventArgs e)
         {
             FASTBuildPackage fbPackage = (FASTBuildPackage)this.package;
             if (null == fbPackage.m_dte.Solution)
@@ -175,7 +190,7 @@ namespace msfastbuildvsix
 			SolutionConfiguration2 sc = sb.ActiveConfiguration as SolutionConfiguration2;
 			VCProject proj = null;
 
-			if (eventSender.CommandID.ID != SlnCommandId && eventSender.CommandID.ID != SlnContextCommandId)
+			if (eventSender.CommandID.ID == CommandId || eventSender.CommandID.ID == ContextCommandId)
 			{
 				if (fbPackage.m_dte.SelectedItems.Count > 0)
 				{
@@ -193,7 +208,7 @@ namespace msfastbuildvsix
 					{
 						startupProject += item;
 					}
-					proj = sln.Item(startupProject).Object as VCProject;
+					proj = sln.Item(1).Object as VCProject;
 				}
 
 				if (proj == null)
@@ -206,13 +221,37 @@ namespace msfastbuildvsix
 				fbCommandLine = string.Format("-p \"{0}\" -c {1} -f {2} -s \"{3}\" -a\"{4}\" -b \"{5}\"", Path.GetFileName(proj.ProjectFile), sc.Name, sc.PlatformName, sln.FileName, fbPackage.OptionFBArgs, fbPackage.OptionFBPath);
 				fbWorkingDirectory = Path.GetDirectoryName(proj.ProjectFile);
 			}
-			else
+			else if(eventSender.CommandID.ID == SlnCommandId || eventSender.CommandID.ID == SlnContextCommandId)
 			{
 				fbCommandLine = string.Format("-s \"{0}\" -c {1} -f {2} -a\"{3}\" -b \"{4}\"", sln.FileName, sc.Name, sc.PlatformName, fbPackage.OptionFBArgs, fbPackage.OptionFBPath);
 				fbWorkingDirectory = Path.GetDirectoryName(sln.FileName);
 			}
-
-			if(fbPackage.OptionFBUnity)
+            else if (eventSender.CommandID.ID == CancelCommandId)
+            {
+                fbPackage.m_outputPane.OutputString($" try cancel last fbuild process\n");
+                System.Diagnostics.Process[] localByName = System.Diagnostics.Process.GetProcessesByName("fbuild");
+                foreach (System.Diagnostics.Process p in localByName)
+                {
+                    fbPackage.m_outputPane.OutputString($"process:{p.Id} {p.ProcessName}\n");
+                    //触发ctrl+c
+                    if (AttachConsole((uint)p.Id))
+                    {
+                        SetConsoleCtrlHandler(null, true);
+                        try
+                        {
+                            fbPackage.m_outputPane.OutputString($"ctrl c to process {p.Id}\n");
+                            GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
+                        }
+                        finally
+                        {
+                            SetConsoleCtrlHandler(null, false);
+                            FreeConsole();
+                        }
+                    }
+                }
+                return;
+            }
+            if (fbPackage.OptionFBUnity)
 			{
 				fbCommandLine += " -u true";
 			}
