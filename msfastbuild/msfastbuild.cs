@@ -206,14 +206,31 @@ namespace msfastbuild
                         string IntDir = CurrentProject.Proj.GetProperty("IntDir").EvaluatedValue;
                         string projectname = CurrentProject.Proj.GetProperty("ProjectName").EvaluatedValue;
                         string tlogDir = $"{CurrentProject.Proj.DirectoryPath}\\{IntDir}{projectname}.tlog";
-                        if (Directory.Exists(tlogDir))
+                        try
                         {
-                            File.WriteAllText($"{tlogDir}\\{projectname}.lastbuildstate", contents);
-                            //删除unsuccessfulbuild
-                            if (File.Exists($"{tlogDir}\\unsuccessfulbuild"))
+                            if (!Directory.Exists(tlogDir))
                             {
-                                File.Delete($"{tlogDir}\\unsuccessfulbuild");
+								Directory.CreateDirectory(tlogDir);
                             }
+                            /** 删除文件夹下所有文件与文件夹 */
+                            DirectoryInfo dirInfo = new DirectoryInfo(tlogDir);
+                            FileSystemInfo[] fileSysInfo = dirInfo.GetFileSystemInfos();
+                            foreach (FileSystemInfo fsi in fileSysInfo)
+                            {
+                                if (fsi is DirectoryInfo)
+                                {
+                                    Directory.Delete(fsi.FullName, true);
+                                }
+                                else
+                                {
+                                    File.Delete(fsi.FullName);
+                                }
+								File.WriteAllText($"{tlogDir}\\{projectname}.lastbuildstate", contents);
+							}
+                        }
+                        catch (Exception e)
+                        {
+							Console.WriteLine("Exception: " + e.ToString());
                         }
                         ProjectsBuilt++;
                     }
