@@ -826,21 +826,32 @@ namespace msfastbuild
 				ProjectItem BuildEvent = ActiveProject.GetItems("PostBuildEvent").First();
 				if (BuildEvent.Metadata.Any())
 				{
-					ProjectMetadata MetaData = BuildEvent.Metadata.First();
-					if(!string.IsNullOrEmpty(MetaData.EvaluatedValue))
-					{
-						string BatchText = "call \"" + VCBasePath + "Auxiliary\\Build\\vcvarsall.bat\" "
-							+ (Platform == "Win32" ? "x86" : "x64") + " " + WindowsSDKTarget + "\n";
-						PostBuildBatchFile = Path.Combine(ActiveProject.DirectoryPath, Path.GetFileNameWithoutExtension(ActiveProject.FullPath) + "_postbuild.bat");
-						File.WriteAllText(PostBuildBatchFile, BatchText + MetaData.EvaluatedValue);
-						OutputString.Append("Exec('postbuild') \n{\n");
-						OutputString.AppendFormat("\t.ExecExecutable = '{0}' \n", PostBuildBatchFile);
-						OutputString.AppendFormat("\t.ExecInput = '{0}' \n", PostBuildBatchFile);
-						OutputString.AppendFormat("\t.ExecOutput = '{0}' \n", PostBuildBatchFile + ".txt");
-						OutputString.Append("\t.PreBuildDependencies = 'output' \n");
-						OutputString.Append("\t.ExecUseStdOutAsOutput = true \n");
-						OutputString.Append("}\n\n");
-					}
+                    var buildEvents = new List<ProjectItem>();
+                    buildEvents.AddRange(ActiveProject.GetItems("PostBuildEvent"));
+                    if (buildEvents.Exists(b => b.Metadata.ToList().Exists(t => t.Name == "Command")))
+                    {
+                        string BatchText = "call \"" + VCBasePath + "Auxiliary\\Build\\vcvarsall.bat\" "
+                                            + (Platform == "Win32" ? "x86" : "x64") + " " + WindowsSDKTarget + "\n";
+                        PreBuildBatchFile = Path.Combine(ActiveProject.DirectoryPath, Path.GetFileNameWithoutExtension(ActiveProject.FullPath) + "_prebuild.bat");
+                        File.WriteAllText(PreBuildBatchFile, BatchText);
+                        foreach (var buildEvent in buildEvents)
+                        {
+                            foreach (var mdPi in buildEvent.Metadata)
+                            {
+                                if (mdPi.Name == "Command" && !string.IsNullOrEmpty(mdPi.EvaluatedValue))
+                                {
+                                    File.AppendAllText(PreBuildBatchFile, mdPi.EvaluatedValue + "\n");
+                                }
+                            }
+                        }
+                        OutputString.Append("Exec('postbuild') \n{\n");
+                        OutputString.AppendFormat("\t.ExecExecutable = '{0}' \n", PostBuildBatchFile);
+                        OutputString.AppendFormat("\t.ExecInput = '{0}' \n", PostBuildBatchFile);
+                        OutputString.AppendFormat("\t.ExecOutput = '{0}' \n", PostBuildBatchFile + ".txt");
+                        OutputString.Append("\t.PreBuildDependencies = 'output' \n");
+                        OutputString.Append("\t.ExecUseStdOutAsOutput = true \n");
+                        OutputString.Append("}\n\n");
+                    }
 				}
 			}
 
