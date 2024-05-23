@@ -127,8 +127,8 @@ namespace msfastbuild
                     {
                         File.Delete(fsi.FullName);
                     }
-                    File.WriteAllText($"{tlogDir}\\{projectname}.lastbuildstate", contents);
                 }
+                File.WriteAllText($"{tlogDir}\\{projectname}.lastbuildstate", contents);
             }
             catch (Exception e)
             {
