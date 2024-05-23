@@ -832,15 +832,15 @@ namespace msfastbuild
                     {
                         string BatchText = "call \"" + VCBasePath + "Auxiliary\\Build\\vcvarsall.bat\" "
                                             + (Platform == "Win32" ? "x86" : "x64") + " " + WindowsSDKTarget + "\n";
-                        PreBuildBatchFile = Path.Combine(ActiveProject.DirectoryPath, Path.GetFileNameWithoutExtension(ActiveProject.FullPath) + "_prebuild.bat");
-                        File.WriteAllText(PreBuildBatchFile, BatchText);
+                        PostBuildBatchFile = Path.Combine(ActiveProject.DirectoryPath, Path.GetFileNameWithoutExtension(ActiveProject.FullPath) + "_postbuild.bat");
+                        File.WriteAllText(PostBuildBatchFile, BatchText);
                         foreach (var buildEvent in buildEvents)
                         {
                             foreach (var mdPi in buildEvent.Metadata)
                             {
                                 if (mdPi.Name == "Command" && !string.IsNullOrEmpty(mdPi.EvaluatedValue))
                                 {
-                                    File.AppendAllText(PreBuildBatchFile, mdPi.EvaluatedValue + "\n");
+                                    File.AppendAllText(PostBuildBatchFile, mdPi.EvaluatedValue + "\n");
                                 }
                             }
                         }
