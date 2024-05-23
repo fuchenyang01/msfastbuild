@@ -93,13 +93,48 @@ namespace msfastbuild
 		}
 
 		static public BuildType BuildOutput = BuildType.Application;
-
+		static public double TotalTime = 0;
 		public class MSFBProject
 		{
 			public Project Proj;
 			public List<MSFBProject> Dependents = new List<MSFBProject>();
 			public string AdditionalLinkInputs = "";
 		}
+
+		static void GenTlog(MSFBProject CurrentProject)
+        {
+            //生成tlog用于MSBuild增量编译
+            string contents = $"{CommandLineOptions.Config}|{CommandLineOptions.Platform}|{SolutionDir.Replace('/', '\\')}|";
+            string IntDir = CurrentProject.Proj.GetProperty("IntDir").EvaluatedValue;
+            string projectname = CurrentProject.Proj.GetProperty("ProjectName").EvaluatedValue;
+            string tlogDir = $"{CurrentProject.Proj.DirectoryPath}\\{IntDir}{projectname}.tlog";
+            try
+            {
+                if (!Directory.Exists(tlogDir))
+                {
+                    Directory.CreateDirectory(tlogDir);
+                }
+                /** 删除文件夹下所有文件与文件夹 */
+                DirectoryInfo dirInfo = new DirectoryInfo(tlogDir);
+                FileSystemInfo[] fileSysInfo = dirInfo.GetFileSystemInfos();
+                foreach (FileSystemInfo fsi in fileSysInfo)
+                {
+                    if (fsi is DirectoryInfo)
+                    {
+                        Directory.Delete(fsi.FullName, true);
+                    }
+                    else
+                    {
+                        File.Delete(fsi.FullName);
+                    }
+                    File.WriteAllText($"{tlogDir}\\{projectname}.lastbuildstate", contents);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Exception: " + e.ToString());
+            }
+        }
 
 		static public int Run(string[] args)
 		{
@@ -188,9 +223,11 @@ namespace msfastbuild
                 }
             }
 
-
+            List<List<string>> build_list = new List<List<string>>();
+            System.Diagnostics.Stopwatch stop_watch = new System.Diagnostics.Stopwatch();
+            stop_watch.Start();
             int ProjectsBuilt = 0;
-			foreach(MSFBProject project in EvaluatedProjects)
+            foreach (MSFBProject project in EvaluatedProjects)
 			{
 				CurrentProject = project;
 
@@ -227,49 +264,34 @@ namespace msfastbuild
 				BFFOutputFilePath = Path.GetDirectoryName(CurrentProject.Proj.FullPath) + "\\" + Path.GetFileName(CurrentProject.Proj.FullPath) + "_" + CommandLineOptions.Config.Replace(" ", "") + "_" + CommandLineOptions.Platform.Replace(" ", "") + ".bff";
 				GenerateBffFromVcxproj(CommandLineOptions.Config, CommandLineOptions.Platform);
 
-				if (!CommandLineOptions.GenerateOnly)
-				{
-					if (HasCompileActions && !ExecuteBffFile(CurrentProject.Proj.FullPath, CommandLineOptions.Platform))
-						break;
-					else
-					{
-                        //生成tlog用于MSBuild增量编译
-                        string contents = $"{CommandLineOptions.Config}|{CommandLineOptions.Platform}|{SolutionDir.Replace('/', '\\')}|";
-                        string IntDir = CurrentProject.Proj.GetProperty("IntDir").EvaluatedValue;
-                        string projectname = CurrentProject.Proj.GetProperty("ProjectName").EvaluatedValue;
-                        string tlogDir = $"{CurrentProject.Proj.DirectoryPath}\\{IntDir}{projectname}.tlog";
-                        try
-                        {
-                            if (!Directory.Exists(tlogDir))
-                            {
-								Directory.CreateDirectory(tlogDir);
-                            }
-                            /** 删除文件夹下所有文件与文件夹 */
-                            DirectoryInfo dirInfo = new DirectoryInfo(tlogDir);
-                            FileSystemInfo[] fileSysInfo = dirInfo.GetFileSystemInfos();
-                            foreach (FileSystemInfo fsi in fileSysInfo)
-                            {
-                                if (fsi is DirectoryInfo)
-                                {
-                                    Directory.Delete(fsi.FullName, true);
-                                }
-                                else
-                                {
-                                    File.Delete(fsi.FullName);
-                                }
-								File.WriteAllText($"{tlogDir}\\{projectname}.lastbuildstate", contents);
-							}
-                        }
-                        catch (Exception e)
-                        {
-							Console.WriteLine("Exception: " + e.ToString());
-                        }
+                if (!CommandLineOptions.GenerateOnly)
+                {
+                    if (HasCompileActions && !ExecuteBffFile(CurrentProject.Proj.FullPath, CommandLineOptions.Platform))
+                        break;
+                    else
+                    {
+                        GenTlog(CurrentProject);
                         ProjectsBuilt++;
                     }
-				}
-			}
+                }
+            }
+            stop_watch.Stop();
+            TotalTime = stop_watch.Elapsed.TotalSeconds;
 
-			Console.WriteLine(ProjectsBuilt + "/" + EvaluatedProjects.Count + " built.");
+            UInt32 minutes = (UInt32)(TotalTime / 60.0f);
+            TotalTime -= (minutes * 60.0f);
+            double seconds = TotalTime;
+            Console.WriteLine("");
+            if (minutes > 0)
+            {
+                Console.WriteLine("Total Time: " + minutes.ToString() + "m " + seconds.ToString("0.###") + "s");
+            }
+            else
+            {
+                Console.WriteLine("Total Time: " + seconds.ToString("0.###") + "s");
+            }
+
+            Console.WriteLine($"========== FASTBuild: 成功 {ProjectsBuilt}, 失败 {EvaluatedProjects.Count - ProjectsBuilt} ==========");
             if (ProjectsBuilt == EvaluatedProjects.Count)
             {
                 return 0;

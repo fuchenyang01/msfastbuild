@@ -274,6 +274,8 @@ namespace fastbuildvsix
                 return;
             }
             pkg.dte.ExecuteCommand("File.SaveAll");
+            Window window = pkg.dte.Windows.Item(EnvDTE.Constants.vsWindowKindOutput);
+            window.Activate();
 
             string fbCommandLine = "";
             string fbWorkingDirectory = "";
@@ -355,7 +357,7 @@ namespace fastbuildvsix
                 //FBProcess.StartInfo.EnvironmentVariables["Path"] = GetMSBuildProperty("Path", store);
                 //pkg.outputPane.OutputString($"environ:WindowsTargetPlatformVersion-{FBProcess.StartInfo.EnvironmentVariables["WindowsTargetPlatformVersion"]} VSInstallDir-{FBProcess.StartInfo.EnvironmentVariables["VSInstallDir"]}\n");
                 var SystemEncoding = System.Globalization.CultureInfo.GetCultureInfo(GetSystemDefaultLCID()).TextInfo.OEMCodePage;
-                FBProcess.StartInfo.StandardOutputEncoding = System.Text.Encoding.GetEncoding(SystemEncoding);
+                FBProcess.StartInfo.StandardOutputEncoding = Console.OutputEncoding;
 
                 System.Diagnostics.DataReceivedEventHandler OutputEventHandler = (Sender, Args) => {
                     pkg.JoinableTaskFactory.RunAsync(async () =>
