@@ -46,6 +46,11 @@ namespace msfastbuild
 		HelpText = "Regenerate bff file even when the project hasn't changed.")]
 		public bool AlwaysRegenerate { get; set; }
 
+		
+		[Option('o', "One vcproject ", DefaultValue = false,
+		HelpText = "Only Build One vcproject")]
+		public bool OneProject { get; set; }
+
 		[Option('b', "fbpath", DefaultValue = @"FBuild.exe",
 		HelpText = "Path to FASTBuild executable.")]
 		public string FBPath { get; set; }
@@ -96,20 +101,20 @@ namespace msfastbuild
 			public string AdditionalLinkInputs = "";
 		}
 
-		static void Main(string[] args)
+		static int Main(string[] args)
 		{
 			Parser parser = new Parser();
 			if (!parser.ParseArguments(args, CommandLineOptions))
 			{
 				Console.WriteLine(CommandLineOptions.GetUsage());
-				return;
+				return 1;
 			}
 
 			if (string.IsNullOrEmpty(CommandLineOptions.Solution) && string.IsNullOrEmpty(CommandLineOptions.Project))
 			{
 				Console.WriteLine("No solution or project provided!");
 				Console.WriteLine(CommandLineOptions.GetUsage());
-				return;
+				return 1;
 			}
 
 			List <string> ProjectsToBuild = new List<string>();
@@ -142,7 +147,7 @@ namespace msfastbuild
 				{
 					Console.WriteLine("Failed to parse solution file " + CommandLineOptions.Solution + "!");
 					Console.WriteLine("Exception: " + e.Message);
-					return;
+					return 1;
 				}
 			}
 			else if (!string.IsNullOrEmpty(CommandLineOptions.Project))
@@ -152,12 +157,39 @@ namespace msfastbuild
 
 			List<MSFBProject> EvaluatedProjects = new List<MSFBProject>();
 
-			for (int i=0; i < ProjectsToBuild.Count; ++i)
+			if(CommandLineOptions.OneProject)
 			{
-				EvaluateProjectReferences(ProjectsToBuild[i], EvaluatedProjects, null);
-			}
+				if (ProjectsToBuild.Count > 0)
+				{
+					ProjectCollection projColl = new ProjectCollection();
+					if (!string.IsNullOrEmpty(SolutionDir))
+						projColl.SetGlobalProperty("SolutionDir", SolutionDir);
+					MSFBProject newProj = new MSFBProject();
+					Project proj = projColl.LoadProject(ProjectsToBuild[0]);
 
-			int ProjectsBuilt = 0;
+					if (proj != null)
+					{
+						proj.SetGlobalProperty("Configuration", CommandLineOptions.Config);
+						proj.SetGlobalProperty("Platform", CommandLineOptions.Platform);
+						if (!string.IsNullOrEmpty(SolutionDir))
+							proj.SetGlobalProperty("SolutionDir", SolutionDir);
+						proj.ReevaluateIfNecessary();
+
+						newProj.Proj = proj;
+						EvaluatedProjects.Add(newProj);
+					}
+				}
+            }
+            else
+            {
+                for (int i = 0; i < ProjectsToBuild.Count; ++i)
+                {
+                    EvaluateProjectReferences(ProjectsToBuild[i], EvaluatedProjects, null);
+                }
+            }
+
+
+            int ProjectsBuilt = 0;
 			foreach(MSFBProject project in EvaluatedProjects)
 			{
 				CurrentProject = project;
@@ -238,7 +270,13 @@ namespace msfastbuild
 			}
 
 			Console.WriteLine(ProjectsBuilt + "/" + EvaluatedProjects.Count + " built.");
-		}
+            if (ProjectsBuilt == EvaluatedProjects.Count)
+            {
+                return 0;
+            }
+			else
+                return 1;
+        }
 
 		static public void EvaluateProjectReferences(string ProjectPath, List<MSFBProject> evaluatedProjects, MSFBProject dependent)
 		{

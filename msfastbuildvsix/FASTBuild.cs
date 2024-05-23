@@ -27,6 +27,7 @@ namespace msfastbuildvsix
 		public const int ContextCommandId = 0x0102;
 		public const int SlnContextCommandId = 0x0103;
         public const int CancelCommandId = 0x0108;
+		public const int ContextProjectCommandId = 0x0104;
         /// <summary>
         /// Command menu group (command set GUID).
         /// </summary>
@@ -58,7 +59,11 @@ namespace msfastbuildvsix
                 var menuItem = new MenuCommand(this.MenuItemCallback, menuCommandID);
                 commandService.AddCommand(menuItem);
 
-				menuCommandID = new CommandID(CommandSet, SlnCommandId);
+                menuCommandID = new CommandID(CommandSet, ContextProjectCommandId);
+                menuItem = new MenuCommand(this.MenuItemCallback, menuCommandID);
+                commandService.AddCommand(menuItem);
+
+                menuCommandID = new CommandID(CommandSet, SlnCommandId);
 				menuItem = new MenuCommand(this.MenuItemCallback, menuCommandID);
 				commandService.AddCommand(menuItem);
 
@@ -190,7 +195,7 @@ namespace msfastbuildvsix
 			SolutionConfiguration2 sc = sb.ActiveConfiguration as SolutionConfiguration2;
 			VCProject proj = null;
 
-			if (eventSender.CommandID.ID == CommandId || eventSender.CommandID.ID == ContextCommandId)
+			if (eventSender.CommandID.ID == CommandId || eventSender.CommandID.ID == ContextCommandId || eventSender.CommandID.ID == ContextProjectCommandId)
 			{
 				if (fbPackage.m_dte.SelectedItems.Count > 0)
 				{
@@ -219,6 +224,10 @@ namespace msfastbuildvsix
 
 				fbPackage.m_outputPane.OutputString("Building " + Path.GetFileName(proj.ProjectFile) + " " + sc.Name + " " + sc.PlatformName + "\r");
 				fbCommandLine = string.Format("-p \"{0}\" -c {1} -f {2} -s \"{3}\" -a\"{4}\" -b \"{5}\"", Path.GetFileName(proj.ProjectFile), sc.Name, sc.PlatformName, sln.FileName, fbPackage.OptionFBArgs, fbPackage.OptionFBPath);
+                if (eventSender.CommandID.ID == ContextProjectCommandId)
+                {
+					fbCommandLine += " -o true";
+				}
 				fbWorkingDirectory = Path.GetDirectoryName(proj.ProjectFile);
 			}
 			else if(eventSender.CommandID.ID == SlnCommandId || eventSender.CommandID.ID == SlnContextCommandId)

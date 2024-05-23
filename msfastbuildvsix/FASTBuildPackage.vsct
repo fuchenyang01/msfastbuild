@@ -70,7 +70,7 @@
         <Parent guid="guidFASTBuildPackageCmdSet" id="MyMenuGroup" />
         <Icon guid="guidImages" id="bmpPic1" />
         <Strings>
-          <ButtonText>FASTBuild Project</ButtonText>
+          <ButtonText>FASTBuild</ButtonText>
         </Strings>
       </Button>
 
@@ -78,10 +78,16 @@
         <Parent guid="guidFASTBuildPackageCmdSet" id="ProjContextMenuGroup" />
         <Icon guid="guidImages" id="bmpPic1" />
         <Strings>
-          <ButtonText>FASTBuild Project</ButtonText>
+          <ButtonText>FASTBuild</ButtonText>
         </Strings>
       </Button>
-
+	  <Button guid="guidFASTBuildPackageCmdSet" id="ContextMenuFASTBuildProjectId" priority="0x0100" type="Button">
+		  <Parent guid="guidFASTBuildPackageCmdSet" id="ProjContextMenuGroup" />
+		  <Icon guid="guidImages" id="bmpPic1" />
+		  <Strings>
+			  <ButtonText>FASTBuild This Project</ButtonText>
+		  </Strings>
+	  </Button>
       <Button guid="guidFASTBuildPackageCmdSet" id="SlnContextMenuFASTBuildId" priority="0x0100" type="Button">
         <Parent guid="guidFASTBuildPackageCmdSet" id="SlnContextMenuGroup" />
         <Icon guid="guidImages" id="bmpPic1" />
@@ -120,7 +126,8 @@
       <IDSymbol name="SlnFASTBuildId" value="0x0101" />
       <IDSymbol name="ProjContextMenuGroup" value="0x1080" />
       <IDSymbol name="ContextMenuFASTBuildId" value="0x0102" />
-      <IDSymbol name="SlnContextMenuGroup" value="0x1081" />
+	  <IDSymbol name="ContextMenuFASTBuildProjectId" value="0x0104" />	
+	  <IDSymbol name="SlnContextMenuGroup" value="0x1081" />
       <IDSymbol name="SlnContextMenuFASTBuildId" value="0x0103" />
 	  <IDSymbol name="CancelFASTBuild" value="0x0108" />
     </GuidSymbol>
