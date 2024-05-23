@@ -15,9 +15,6 @@ namespace fastbuildvsix
         public const string fastbuildvsixString = "0d419937-82de-4fee-b11a-8e50a5a2fcd4";
         public static Guid fastbuildvsix = new Guid(fastbuildvsixString);
 
-        public const string guidImagesString = "8bcbf9f0-c7c3-4a1e-89a0-fe5addf1b971";
-        public static Guid guidImages = new Guid(guidImagesString);
-
         public const string guidfastbuildvsixPackageCmdSetString = "62489d4f-e98e-474b-a11c-2adce89fd0f1";
         public static Guid guidfastbuildvsixPackageCmdSet = new Guid(guidfastbuildvsixPackageCmdSetString);
 
@@ -29,13 +26,13 @@ namespace fastbuildvsix
     /// </summary>
     internal sealed partial class PackageIds
     {
-        public const int bmpPic1 = 0x0001;
         public const int MyMenuGroup = 0x1020;
         public const int MyMenuGroup1 = 0x1021;
         public const int FASTBuildId = 0x0100;
         public const int SlnFASTBuildId = 0x0101;
         public const int ProjContextMenuGroup = 0x1080;
         public const int ContextMenuFASTBuildId = 0x0102;
+        public const int ContextMenuFASTBuildProjectId = 0x0109;
         public const int SlnContextMenuGroup = 0x1081;
         public const int SlnContextMenuFASTBuildId = 0x0103;
         public const int FASTBuildMonitorCommandId = 0x0104;
@@ -44,6 +41,7 @@ namespace fastbuildvsix
         public const int SlnContextMenuFASTBuildClearId = 0x0107;
         public const int CancelFASTBuild = 0x0108;
         public const int cmdidToolWindow1Command = 0x1082;
+        public const int bmpPic1 = 0x0001;
         public const int bmpPic2 = 0x0002;
         public const int bmpPicSearch = 0x0003;
         public const int bmpPicX = 0x0004;

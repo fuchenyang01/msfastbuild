@@ -63,6 +63,10 @@ namespace fastbuildvsix
             menuItem = new MenuCommand(this.Execute, menuCommandID);
             commandService.AddCommand(menuItem);
 
+            menuCommandID = new CommandID(PackageGuids.guidfastbuildvsixPackageCmdSet, PackageIds.ContextMenuFASTBuildProjectId);
+            menuItem = new MenuCommand(this.Execute, menuCommandID);
+            commandService.AddCommand(menuItem);
+
             var menuCommandID1 = new CommandID(PackageGuids.guidfastbuildvsixPackageCmdSet, PackageIds.FASTBuildMonitorCommandId);
             var menuItem1 = new MenuCommand(this.ShowToolWindow, menuCommandID1);
             commandService.AddCommand(menuItem1);
@@ -275,28 +279,29 @@ namespace fastbuildvsix
             string fbWorkingDirectory = "";
             
             VCProject vcProj = null;
-            
-            //单个工程编译
-            if (evtSender.CommandID.ID!= PackageIds.SlnFASTBuildId && evtSender.CommandID.ID != PackageIds.SlnContextMenuFASTBuildId)
+            //编译启动工程
+            if(evtSender.CommandID.ID == PackageIds.FASTBuildId || evtSender.CommandID.ID == PackageIds.ContextMenuFASTBuildId || evtSender.CommandID.ID == PackageIds.ContextMenuFASTBuildProjectId)
             {
-                if(pkg.dte.SelectedItems.Count > 0)
+                if (evtSender.CommandID.ID == PackageIds.FASTBuildId)
                 {
-                    Project envProj = (pkg.dte.SelectedItems.Item(1).Project as EnvDTE.Project);
-                    
-                    if (envProj != null)
-                    {
-                        vcProj = envProj.Object as VCProject;
-                    }
-                }
-                if (vcProj == null)
-                {
-                    //没有选择,编译启动工程
                     string startupProject = "";
                     foreach (String item in (Array)sb.StartupProjects)
                     {
                         startupProject += item;
                     }
                     vcProj = sln.Item(startupProject).Object as VCProject;
+                }
+                else if (evtSender.CommandID.ID == PackageIds.ContextMenuFASTBuildId || evtSender.CommandID.ID == PackageIds.ContextMenuFASTBuildProjectId)
+                {
+                    if (pkg.dte.SelectedItems.Count > 0)
+                    {
+                        Project envProj = (pkg.dte.SelectedItems.Item(1).Project as EnvDTE.Project);
+
+                        if (envProj != null)
+                        {
+                            vcProj = envProj.Object as VCProject;
+                        }
+                    }
                 }
                 if (vcProj == null)
                 {
@@ -306,8 +311,14 @@ namespace fastbuildvsix
                 pkg.outputPane.OutputString("Building " + Path.GetFileName(vcProj.ProjectFile) + " " + slnConfig.Name + " " + slnConfig.PlatformName + "\r");
                 fbCommandLine = string.Format("-p \"{0}\" -c {1} -f {2} -s \"{3}\" -a\"{4}\" -b \"{5}\"", Path.GetFileName(vcProj.ProjectFile), slnConfig.Name, slnConfig.PlatformName, sln.FileName, pkg.OptionFBArgs, pkg.OptionFBPath);
                 fbWorkingDirectory = Path.GetDirectoryName(vcProj.ProjectFile);
+                //编译单个工程
+                if (evtSender.CommandID.ID == PackageIds.ContextMenuFASTBuildProjectId)
+                {
+                    fbCommandLine += " -o true";
+                }
             }
-            else
+            //编译解决方案
+            else if(evtSender.CommandID.ID== PackageIds.SlnFASTBuildId || evtSender.CommandID.ID == PackageIds.SlnContextMenuFASTBuildId)
             {
                 fbCommandLine = string.Format("-s \"{0}\" -c {1} -f {2} -a\"{3}\" -b \"{4}\"", sln.FileName, slnConfig.Name, slnConfig.PlatformName, pkg.OptionFBArgs, pkg.OptionFBPath);
                 fbWorkingDirectory = Path.GetDirectoryName(sln.FileName);
@@ -349,7 +360,7 @@ namespace fastbuildvsix
                 System.Diagnostics.DataReceivedEventHandler OutputEventHandler = (Sender, Args) => {
                     pkg.JoinableTaskFactory.RunAsync(async () =>
                     {
-                        await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                        //await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
                         if (Args.Data != null) pkg.outputPane.OutputString(Args.Data + "\r");
                     });
                 };
@@ -358,7 +369,7 @@ namespace fastbuildvsix
                 FBProcess.Start();
                 FBProcess.BeginOutputReadLine();
                 //FBProcess.WaitForExit();
-                ShowMonitorWindow();
+                //ShowMonitorWindow();
             }
             catch (Exception ex)
             {

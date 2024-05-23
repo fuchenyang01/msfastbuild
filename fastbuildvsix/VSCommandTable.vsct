@@ -29,7 +29,7 @@
         <Parent guid="guidfastbuildvsixPackageCmdSet" id="MyMenuGroup" />
         <Icon guid="guidImages1" id="bmpPic1" />
         <Strings>
-          <ButtonText>FASTBuild Project</ButtonText>
+          <ButtonText>FASTBuild</ButtonText>
         </Strings>
       </Button>
       <Button guid="guidfastbuildvsixPackageCmdSet" id="SlnFASTBuildId" priority="0x0200" type="Button">
@@ -50,9 +50,16 @@
         <Parent guid="guidfastbuildvsixPackageCmdSet" id="ProjContextMenuGroup" />
         <Icon guid="guidImages1" id="bmpPic1" />
         <Strings>
-          <ButtonText>FASTBuild Project</ButtonText>
+          <ButtonText>FASTBuild</ButtonText>
         </Strings>
       </Button>
+	  <Button guid="guidfastbuildvsixPackageCmdSet" id="ContextMenuFASTBuildProjectId" priority="0x0100" type="Button">
+		  <Parent guid="guidfastbuildvsixPackageCmdSet" id="ProjContextMenuGroup" />
+		  <Icon guid="guidImages1" id="bmpPic1" />
+		  <Strings>
+			  <ButtonText>FASTBuild This Project</ButtonText>
+		  </Strings>
+		</Button>
       <Button guid="guidfastbuildvsixPackageCmdSet" id="ContextMenuFASTBuildClearId" priority="0x0100" type="Button">
         <Parent guid="guidfastbuildvsixPackageCmdSet" id="ProjContextMenuGroup" />
         <Icon guid="guidImages1" id="bmpPic1" />
@@ -76,14 +83,14 @@
       </Button>
       <Button guid="guidfastbuildvsixPackageCmdSet" id="FASTBuildMonitorToolsCommandId" priority="0x0100" type="Button">
         <Parent guid="guidfastbuildvsixPackageCmdSet" id="MyMenuGroup1" />
-        <Icon guid="guidImages" id="bmpPic1" />
+        <Icon guid="guidImages1" id="bmpPic1" />
         <Strings>
           <ButtonText>FASTBuildMonitor</ButtonText>
         </Strings>
       </Button>
       <Button guid="guidfastbuildvsixPackageCmdSet" id="FASTBuildMonitorCommandId" priority="0x0100" type="Button">
         <Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1" />
-        <Icon guid="guidImages" id="bmpPic1" />
+        <Icon guid="guidImages1" id="bmpPic1" />
         <Strings>
           <ButtonText>FASTBuildMonitor</ButtonText>
         </Strings>
@@ -92,9 +99,6 @@
   </Commands>
   <Symbols>
     <GuidSymbol name="fastbuildvsix" value="{0d419937-82de-4fee-b11a-8e50a5a2fcd4}">
-    </GuidSymbol>
-    <GuidSymbol name="guidImages" value="{8bcbf9f0-c7c3-4a1e-89a0-fe5addf1b971}">
-      <IDSymbol name="bmpPic1" value="1" />
     </GuidSymbol>
   
     <GuidSymbol value="{62489d4f-e98e-474b-a11c-2adce89fd0f1}" name="guidfastbuildvsixPackageCmdSet">
@@ -105,6 +109,7 @@
       <IDSymbol name="SlnFASTBuildId" value="0x0101" />
       <IDSymbol name="ProjContextMenuGroup" value="0x1080" />
       <IDSymbol name="ContextMenuFASTBuildId" value="0x0102" />
+	  <IDSymbol name="ContextMenuFASTBuildProjectId" value="0x0109" />
       <IDSymbol name="SlnContextMenuGroup" value="0x1081" />
       <IDSymbol name="SlnContextMenuFASTBuildId" value="0x0103" />
       <IDSymbol name="FASTBuildMonitorCommandId" value="0x0104" />

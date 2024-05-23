@@ -23,7 +23,7 @@ namespace msfastbuild
             if (used == 0) return null;
             return instances[used - 1];
         }
-        static void Main(string[] args)
+        static int Main(string[] args)
         {
             // Register the MSBuild instance,使用系统安装的msbuild加载工程,保证
             var instances = MSBuildLocator.QueryVisualStudioInstances().ToList();
@@ -31,7 +31,7 @@ namespace msfastbuild
             Console.WriteLine($"Using MSBuild from VS Instance: {ins.Name} - {ins.Version}");
             Console.WriteLine();
             MSBuildLocator.RegisterInstance(ins);
-            msfastbuild.Run(args);
+            return msfastbuild.Run(args);
         }
     }
 }
