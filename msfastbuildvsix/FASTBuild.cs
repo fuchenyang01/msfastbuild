@@ -186,7 +186,8 @@ namespace msfastbuildvsix
 			}
 
 			fbPackage.m_dte.ExecuteCommand("File.SaveAll");
-
+			Window window = fbPackage.m_dte.Windows.Item(EnvDTE.Constants.vsWindowKindOutput);
+			window.Activate();
 			string fbCommandLine = "";
 			string fbWorkingDirectory = "";
 
@@ -282,8 +283,8 @@ namespace msfastbuildvsix
 				FBProcess.StartInfo.RedirectStandardOutput = true;
 				FBProcess.StartInfo.UseShellExecute = false;
 				FBProcess.StartInfo.CreateNoWindow = true;
-				var SystemEncoding = System.Globalization.CultureInfo.GetCultureInfo(GetSystemDefaultLCID()).TextInfo.OEMCodePage;
-				FBProcess.StartInfo.StandardOutputEncoding = System.Text.Encoding.GetEncoding(SystemEncoding);
+				//var SystemEncoding = System.Globalization.CultureInfo.GetCultureInfo(GetSystemDefaultLCID()).TextInfo.OEMCodePage;
+				FBProcess.StartInfo.StandardOutputEncoding = Console.OutputEncoding;
 
 				System.Diagnostics.DataReceivedEventHandler OutputEventHandler = (Sender, Args) => {
 					if (Args.Data != null)
