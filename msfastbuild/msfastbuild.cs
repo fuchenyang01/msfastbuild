@@ -159,8 +159,23 @@ namespace msfastbuild
 				{
 					if (string.IsNullOrEmpty(CommandLineOptions.Project))
 					{
-						List<ProjectInSolution> SolutionProjects = SolutionFile.Parse(Path.GetFullPath(CommandLineOptions.Solution)).ProjectsInOrder.Where(el => el.ProjectType == SolutionProjectType.KnownToBeMSBuildFormat).ToList();
-						SolutionProjects.Sort((x, y) => //Very dubious sort.
+                        List<ProjectInSolution> SolutionProjectsAll = SolutionFile.Parse(Path.GetFullPath(CommandLineOptions.Solution)).ProjectsInOrder.Where(el => el.ProjectType == SolutionProjectType.KnownToBeMSBuildFormat).ToList();
+
+                        // Filter out projects that should not be built
+                        List<ProjectInSolution> SolutionProjects = new List<ProjectInSolution>(SolutionProjectsAll.Count());
+                        foreach (ProjectInSolution solutionProject in SolutionProjectsAll)
+                        {
+                            foreach (var projConfigEntry in solutionProject.ProjectConfigurations)
+                            {
+                                var projConfig = projConfigEntry.Value;
+                                if (projConfig.PlatformName == CommandLineOptions.Platform &&
+                                    projConfig.ConfigurationName == CommandLineOptions.Config &&
+                                    projConfig.IncludeInBuild)
+                                    SolutionProjects.Add(solutionProject);
+                            }
+                        }
+
+                        SolutionProjects.Sort((x, y) => //Very dubious sort.
 						{
 							if (x.Dependencies.Contains(y.ProjectGuid)) return 1;
 							if (y.Dependencies.Contains(x.ProjectGuid)) return -1;
@@ -496,7 +511,92 @@ namespace msfastbuild
 				ResultString += ObjectListString.ToString();
 				return ResultString;
 			}
-		}
+            public void ToStringSplitPart(ref int ActionNumber, string BaseDir, List<string> InputFiles, StringBuilder RetStr)
+            {
+                bool UsedUnity = false;
+                string OutPath = Path.Combine(CompilerOutputPath, BaseDir);
+                if (CommandLineOptions.UseUnity && Compiler != "rc" && InputFiles.Count > 1)
+                {
+                    RetStr.AppendFormat("Unity('unity_{0}')\n{{\n", ActionNumber);
+                    RetStr.AppendFormat("\t.UnityInputFiles = {{ {0} }}\n", string.Join(",", InputFiles.ConvertAll(el => string.Format("'{0}'", el)).ToArray()));
+                    RetStr.AppendFormat("\t.UnityOutputPath = \"{0}\"\n", OutPath);
+                    RetStr.AppendFormat("\t.UnityNumFiles = {0}\n", 1 + InputFiles.Count / 10);
+                    RetStr.Append("}\n\n");
+                    UsedUnity = true;
+                }
+
+                RetStr.AppendFormat("ObjectList('action_{0}')\n{{\n", ActionNumber);
+                RetStr.AppendFormat("\t.Compiler = '{0}'\n", Compiler);
+                RetStr.AppendFormat("\t.CompilerOutputPath = \"{0}\"\n", OutPath);
+                if (UsedUnity)
+                {
+                    RetStr.AppendFormat("\t.CompilerInputUnity = {{ {0} }}\n", string.Format("'unity_{0}'", ActionNumber));
+                }
+                else
+                {
+                    RetStr.AppendFormat("\t.CompilerInputFiles = {{ {0} }}\n", string.Join(",", InputFiles.ConvertAll(el => string.Format("'{0}'", el)).ToArray()));
+                }
+                RetStr.AppendFormat("\t.CompilerOptions = '{0}'\n", CompilerOptions);
+                if (!string.IsNullOrEmpty(CompilerOutputExtension))
+                {
+                    RetStr.AppendFormat("\t.CompilerOutputExtension = '{0}'\n", CompilerOutputExtension);
+                }
+                if (!string.IsNullOrEmpty(PrecompiledHeaderString))
+                {
+                    RetStr.Append(PrecompiledHeaderString);
+                }
+                if (!string.IsNullOrEmpty(PreBuildBatchFile))
+                {
+                    RetStr.Append("\t.PreBuildDependencies  = 'prebuild'\n");
+                }
+                RetStr.Append("}\n\n");
+
+                ++ActionNumber;
+            }
+
+            public string ToStringSplitOverall(ref int ActionNumber, string ProjDir)
+            {
+                Dictionary<string, int> GroupMap = new Dictionary<string, int>();
+                List<List<string>> SplitFileGroups = new List<List<string>>();
+                foreach (string InputFile in CompilerInputFiles)
+                {
+                    string PureFileName = Path.GetFileName(InputFile);
+                    int Group;
+                    if (GroupMap.TryGetValue(PureFileName, out Group))
+                    {
+                        GroupMap.Remove(PureFileName);
+                    }
+                    else
+                    {
+                        Group = -1;
+                    }
+                    ++Group;
+                    GroupMap.Add(PureFileName, Group);
+
+                    if (SplitFileGroups.Count <= Group)
+                        SplitFileGroups.Add(new List<string>());
+
+                    SplitFileGroups[Group].Add(InputFile);
+                }
+
+                StringBuilder RetStrBuilder = new StringBuilder();
+                int CurGroup = 0;
+                foreach (List<string> SplitFileGroup in SplitFileGroups)
+                {
+                    if (CurGroup == 0)
+                    {
+                        ToStringSplitPart(ref ActionNumber, "", SplitFileGroup, RetStrBuilder);
+                    }
+                    else
+                    {
+                        ToStringSplitPart(ref ActionNumber, string.Format("{0}\\", CurGroup), SplitFileGroup, RetStrBuilder);
+                    }
+                    ++CurGroup;
+                }
+
+                return RetStrBuilder.ToString();
+            }
+        }
 
 		static private void AddExtraDlls(StringBuilder outputString, string rootDir, string pattern)
 		{
@@ -726,8 +826,7 @@ namespace msfastbuild
 			int ActionNumber = 0;
 			foreach (ObjectListNode ObjList in ObjectLists)
 			{
-				OutputString.Append(ObjList.ToString(ActionNumber));
-				ActionNumber++;		
+				OutputString.Append(ObjList.ToStringSplitOverall(ref ActionNumber, ActiveProject.DirectoryPath));
 			}
 
 			if (ActionNumber > 0)
