@@ -64,7 +64,7 @@
         <Parent guid="guidfastbuildvsixPackageCmdSet" id="ProjContextMenuGroup" />
         <Icon guid="guidImages1" id="bmpPic1" />
         <Strings>
-          <ButtonText>FASTBuild remove fbb</ButtonText>
+          <ButtonText>FASTBuild Clean</ButtonText>
         </Strings>
       </Button>
       <Button guid="guidfastbuildvsixPackageCmdSet" id="SlnContextMenuFASTBuildId" priority="0x0100" type="Button">
@@ -78,9 +78,16 @@
         <Parent guid="guidfastbuildvsixPackageCmdSet" id="SlnContextMenuGroup" />
         <Icon guid="guidImages1" id="bmpPic1" />
         <Strings>
-          <ButtonText>FASTBuild remove fbb</ButtonText>
+          <ButtonText>FASTBuild Clean Solution</ButtonText>
         </Strings>
       </Button>
+	  <Button guid="guidfastbuildvsixPackageCmdSet" id="SlnMenuFASTBuildClearId" priority="0x0100" type="Button">
+		  <Parent guid="guidfastbuildvsixPackageCmdSet" id="MyMenuGroup" />
+		  <Icon guid="guidImages1" id="bmpPic1" />
+		  <Strings>
+			  <ButtonText>FASTBuild Clean Solution</ButtonText>
+		  </Strings>
+	  </Button>
       <Button guid="guidfastbuildvsixPackageCmdSet" id="FASTBuildMonitorToolsCommandId" priority="0x0100" type="Button">
         <Parent guid="guidfastbuildvsixPackageCmdSet" id="MyMenuGroup1" />
         <Icon guid="guidImages1" id="bmpPic1" />
@@ -116,6 +123,7 @@
       <IDSymbol name="FASTBuildMonitorToolsCommandId" value="0x0105" />
       <IDSymbol name="ContextMenuFASTBuildClearId" value="0x0106" />
       <IDSymbol name="SlnContextMenuFASTBuildClearId" value="0x0107" />
+	  <IDSymbol name="SlnMenuFASTBuildClearId" value="0x0110" />
       <IDSymbol name="CancelFASTBuild" value="0x0108" />
       <IDSymbol value="4226" name="cmdidToolWindow1Command" />
     </GuidSymbol>

@@ -39,6 +39,7 @@ namespace fastbuildvsix
         public const int FASTBuildMonitorToolsCommandId = 0x0105;
         public const int ContextMenuFASTBuildClearId = 0x0106;
         public const int SlnContextMenuFASTBuildClearId = 0x0107;
+        public const int SlnMenuFASTBuildClearId = 0x0110;
         public const int CancelFASTBuild = 0x0108;
         public const int cmdidToolWindow1Command = 0x1082;
         public const int bmpPic1 = 0x0001;

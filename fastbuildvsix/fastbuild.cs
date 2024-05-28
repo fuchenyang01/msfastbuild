@@ -59,6 +59,10 @@ namespace fastbuildvsix
             menuItem = new MenuCommand(this.Execute, menuCommandID);
             commandService.AddCommand(menuItem);
 
+            menuCommandID = new CommandID(PackageGuids.guidfastbuildvsixPackageCmdSet, PackageIds.SlnMenuFASTBuildClearId);
+            menuItem = new MenuCommand(this.Execute, menuCommandID);
+            commandService.AddCommand(menuItem);
+
             menuCommandID = new CommandID(PackageGuids.guidfastbuildvsixPackageCmdSet, PackageIds.CancelFASTBuild);
             menuItem = new MenuCommand(this.Execute, menuCommandID);
             commandService.AddCommand(menuItem);
@@ -74,6 +78,13 @@ namespace fastbuildvsix
             var menuCommandID2 = new CommandID(PackageGuids.guidfastbuildvsixPackageCmdSet, PackageIds.FASTBuildMonitorToolsCommandId);
             var menuItem2 = new MenuCommand(this.ShowToolWindow, menuCommandID2);
             commandService.AddCommand(menuItem2);
+        }
+
+
+        private System.Diagnostics.Process FBProcess
+        {
+            get;
+            set;
         }
 
         /// <summary>
@@ -186,6 +197,11 @@ namespace fastbuildvsix
                 pkg.outputPane.OutputString($"remove file {file}.\n");
                 File.Delete(file);
             }
+            foreach (string file in Directory.GetFiles(path, "*.bat"))
+            {
+                pkg.outputPane.OutputString($"remove file {file}.\n");
+                File.Delete(file);
+            }
         }
         static List<Project> GetProjects(Solution sln)
         {
@@ -219,9 +235,36 @@ namespace fastbuildvsix
                 pkg.outputPane.OutputString("Build not launched due to active debugger.\r");
                 return;
             }
+            if (!IsFbuildFindable(pkg.OptionFBPath))
+            {
+                pkg.outputPane.OutputString(string.Format("Could not find fbuild at the provided path: {0}, please verify in the msfastbuild options.\r", pkg.OptionFBPath));
+                return;
+            }
+            pkg.dte.ExecuteCommand("File.SaveAll");
+            Window window = pkg.dte.Windows.Item(EnvDTE.Constants.vsWindowKindOutput);
+            window.Activate();
+
+            string fbCommandLine = "";
+            string fbWorkingDirectory = "";
+
+            VCProject vcProj = null;
+
             //取消生成
             if (evtSender.CommandID.ID == PackageIds.CancelFASTBuild) 
             {
+                if (FBProcess == null)
+                {
+                    return;
+                }
+
+                if (FBProcess.HasExited)
+                {
+                    return;
+                }
+
+                FBProcess.CancelOutputRead();
+                FBProcess.Kill();
+
                 pkg.outputPane.OutputString($" try cancel last fbuild process\n");
                 System.Diagnostics.Process[] localByName = System.Diagnostics.Process.GetProcessesByName("fbuild");
                 foreach (System.Diagnostics.Process p in localByName)
@@ -243,10 +286,15 @@ namespace fastbuildvsix
                         }
                     }
                 }
+
+                pkg.outputPane.OutputString("构建已取消.\r");
+
+                Window output_window = pkg.dte.Windows.Item(EnvDTE.Constants.vsWindowKindOutput);
+                output_window.Activate();
                 return;
             }
             //删除生成的fbb文件
-            if(evtSender.CommandID.ID == PackageIds.ContextMenuFASTBuildClearId)
+            else if(evtSender.CommandID.ID == PackageIds.ContextMenuFASTBuildClearId)
             {
                 if (pkg.dte.SelectedItems.Count > 0)
                 {
@@ -255,34 +303,26 @@ namespace fastbuildvsix
                     var vc = (envProj.Object as VCProject);
                     ClearVcProject(pkg, vc);
                 }
-                pkg.outputPane.OutputString("finished\n");
+                pkg.outputPane.OutputString("========== 清理: 完成 ==========\r");
+                Window output_window = pkg.dte.Windows.Item(EnvDTE.Constants.vsWindowKindOutput);
+                output_window.Activate();
                 return;
             }
-            if (evtSender.CommandID.ID == PackageIds.SlnContextMenuFASTBuildClearId)
+            else if(evtSender.CommandID.ID == PackageIds.SlnContextMenuFASTBuildClearId || evtSender.CommandID.ID == PackageIds.SlnMenuFASTBuildClearId)
             {
+                fbWorkingDirectory = Path.GetDirectoryName(sln.FileName);
                 var projs = GetProjects(sln);
                 foreach (var proj in projs)
                 {
                     ClearVcProject(pkg, proj.Object as VCProject);
                 }
-                pkg.outputPane.OutputString("finished\n");
+                pkg.outputPane.OutputString("==========  清理: 完成 ==========\r");
+                Window output_window = pkg.dte.Windows.Item(EnvDTE.Constants.vsWindowKindOutput);
+                output_window.Activate();
                 return;
             }
-            if (!IsFbuildFindable(pkg.OptionFBPath))
-            {
-                pkg.outputPane.OutputString(string.Format("Could not find fbuild at the provided path: {0}, please verify in the msfastbuild options.\r", pkg.OptionFBPath));
-                return;
-            }
-            pkg.dte.ExecuteCommand("File.SaveAll");
-            Window window = pkg.dte.Windows.Item(EnvDTE.Constants.vsWindowKindOutput);
-            window.Activate();
-
-            string fbCommandLine = "";
-            string fbWorkingDirectory = "";
-            
-            VCProject vcProj = null;
             //编译启动工程
-            if(evtSender.CommandID.ID == PackageIds.FASTBuildId || evtSender.CommandID.ID == PackageIds.ContextMenuFASTBuildId || evtSender.CommandID.ID == PackageIds.ContextMenuFASTBuildProjectId)
+            else if(evtSender.CommandID.ID == PackageIds.FASTBuildId || evtSender.CommandID.ID == PackageIds.ContextMenuFASTBuildId || evtSender.CommandID.ID == PackageIds.ContextMenuFASTBuildProjectId)
             {
                 if (evtSender.CommandID.ID == PackageIds.FASTBuildId)
                 {
@@ -335,7 +375,7 @@ namespace fastbuildvsix
             {
                 pkg.outputPane.OutputString("Launching msfastbuild with command line: " + fbCommandLine + "\r");
 
-                System.Diagnostics.Process FBProcess = new System.Diagnostics.Process();
+                FBProcess = new System.Diagnostics.Process();
                 FBProcess.StartInfo.FileName = msfastbuildPath;
                 FBProcess.StartInfo.Arguments = fbCommandLine;
                 FBProcess.StartInfo.WorkingDirectory = fbWorkingDirectory;
@@ -362,7 +402,7 @@ namespace fastbuildvsix
                 System.Diagnostics.DataReceivedEventHandler OutputEventHandler = (Sender, Args) => {
                     pkg.JoinableTaskFactory.RunAsync(async () =>
                     {
-                        //await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                        await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
                         if (Args.Data != null) pkg.outputPane.OutputString(Args.Data + "\r");
                     });
                 };
