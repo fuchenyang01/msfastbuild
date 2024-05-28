@@ -625,7 +625,8 @@ namespace msfastbuild
 
 		static private void GenerateBffFromVcxproj(string Config, string Platform)
 		{
-			Project ActiveProject = CurrentProject.Proj;
+            CustomBuildIndex = -1;
+            Project ActiveProject = CurrentProject.Proj;
 			string MD5hash = "wafflepalooza";
 			PreBuildBatchFile = "";
 			PostBuildBatchFile = "";
