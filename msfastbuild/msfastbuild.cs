@@ -81,7 +81,8 @@ namespace msfastbuild
 		static public MSFBProject CurrentProject;
 		static public Assembly CPPTasksAssembly;
 		static public string PreBuildBatchFile = "";
-		static public string PostBuildBatchFile = "";
+        static public int CustomBuildIndex = -1;
+        static public string PostBuildBatchFile = "";
 		static public string SolutionDir = "";
 		static public bool HasCompileActions = true;
 
@@ -385,13 +386,20 @@ namespace msfastbuild
 			
 			if (!File.Exists(BFFOutputFilePath))
 				return true;
-			
-			string FirstLine = File.ReadAllLines(BFFOutputFilePath).First(); //bit wasteful to read the whole file...
-			if (FirstLine == MD5hash) 
-				return false;
-			else
-				return true;
-		}
+
+            try
+            {
+                using (var reader = new StreamReader(BFFOutputFilePath))
+                {
+                    var FirstLine = reader.ReadLine();
+                    return FirstLine != MD5hash;
+                }
+            }
+            catch (Exception e)
+            {
+                return true;
+            }
+        }
 
 		static public bool ExecuteBffFile(string ProjectPath, string Platform)
 		{
@@ -503,11 +511,15 @@ namespace msfastbuild
 				{
 					ObjectListString.Append(PrecompiledHeaderString);
 				}
-				if (!string.IsNullOrEmpty(PreBuildBatchFile))
-				{
-					ObjectListString.Append("\t.PreBuildDependencies  = 'prebuild'\n");
-				}
-				ObjectListString.Append("}\n\n");
+                if (CustomBuildIndex > -1)
+                {
+                    ObjectListString.AppendFormat("\t.PreBuildDependencies  = 'custombuild_{0}'\n", CustomBuildIndex);
+                }
+                else if (!string.IsNullOrEmpty(PreBuildBatchFile))
+                {
+                    ObjectListString.Append("\t.PreBuildDependencies  = 'prebuild'\n");
+                }
+                ObjectListString.Append("}\n\n");
 				ResultString += ObjectListString.ToString();
 				return ResultString;
 			}
@@ -545,7 +557,11 @@ namespace msfastbuild
                 {
                     RetStr.Append(PrecompiledHeaderString);
                 }
-                if (!string.IsNullOrEmpty(PreBuildBatchFile))
+                if (CustomBuildIndex > -1)
+                {
+                    RetStr.AppendFormat("\t.PreBuildDependencies  = 'custombuild_{0}'\n", CustomBuildIndex);
+                }
+                else if (!string.IsNullOrEmpty(PreBuildBatchFile))
                 {
                     RetStr.Append("\t.PreBuildDependencies  = 'prebuild'\n");
                 }
@@ -717,11 +733,11 @@ namespace msfastbuild
 
 			OutputString.Append(CompilerString);
 
-			if (ActiveProject.GetItems("PreBuildEvent").Any()|| ActiveProject.GetItems("CustomBuild").Any())
+			if (ActiveProject.GetItems("PreBuildEvent").Any())
 			{
 				var buildEvents = new List<ProjectItem>();
 				buildEvents.AddRange(ActiveProject.GetItems("PreBuildEvent"));
-				buildEvents.AddRange(ActiveProject.GetItems("CustomBuild"));
+				//buildEvents.AddRange(ActiveProject.GetItems("CustomBuild"));
 				if (buildEvents.Exists(b=>b.Metadata.ToList().Exists(t => t.Name == "Command")))
 				{
 					string BatchText = "call \"" + VCBasePath + "Auxiliary\\Build\\vcvarsall.bat\" "
@@ -822,8 +838,87 @@ namespace msfastbuild
 					ObjectLists.Add(new ObjectListNode(Item.EvaluatedInclude, "rc", IntDir, formattedCompilerOptions, PrecompiledHeaderString, ".res"));
 				}
 			}
+            var CustomBuilds = ActiveProject.GetItems("CustomBuild");
+            var Dependencies = new List<string>();
 
-			int ActionNumber = 0;
+            foreach (var Item in CustomBuilds)
+            {
+                var CustomBuildBatchText = new List<string>();
+                var CustomBuildBatchFile = Path.Combine(ActiveProject.DirectoryPath, Path.GetFileNameWithoutExtension(ActiveProject.FullPath) + $"_custom_{CustomBuildIndex + 1}.bat");
+                CustomBuildBatchText.Add("@echo off");
+                CustomBuildBatchText.Add("call \"" + VCBasePath + "Auxiliary\\Build\\vcvarsall.bat\" "
+                        + (Platform == "Win32" ? "x86" : "x64") + " " + WindowsSDKTarget + "\n");
+                if (Item.DirectMetadata.Any())
+                {
+                    if (Item.DirectMetadata.Where(dmd => dmd.Name == "ExcludedFromBuild" && dmd.EvaluatedValue == "true").Any())
+                        continue;
+                }
+                if (!Item.Metadata.Where(dmd => dmd.Name == "Command").Any())
+                {
+                    continue;
+                }
+
+                var file = Path.Combine(ActiveProject.DirectoryPath, Item.EvaluatedInclude);
+                Dependencies.Add(file);
+                var Command = Item.Metadata.Where(dmd => dmd.Name == "Command").First().EvaluatedValue;
+
+                CustomBuildBatchText.Add(string.Format("if \"%1\"==\"custombuild_{0}\" (", CustomBuildIndex + 1));
+                CustomBuildBatchText.Add('\t' + Command);
+                CustomBuildBatchText.Add(")");
+
+                var AdditionInputs = Item.Metadata.Where(dmd => dmd.Name == "AdditionalInputs");
+                var Dependices = new List<string>();
+                Dependices.Add(Path.Combine(ActiveProject.DirectoryPath, Item.EvaluatedInclude));
+                if (AdditionInputs.Any())
+                {
+                    Dependices.AddRange(AdditionInputs.First().EvaluatedValue.Split(';'));
+                }
+
+                OutputString.AppendFormat("Exec('custombuild_{0}')\n", CustomBuildIndex + 1);
+                OutputString.Append("{");
+                OutputString.AppendFormat("\n\t.ExecExecutable = '{0}'", CustomBuildBatchFile);
+                var StartFlag = true;
+                OutputString.Append("\n\t.ExecInput = {");
+                foreach (var tempFile in Dependices)
+                {
+                    if (string.IsNullOrEmpty(tempFile))
+                        continue;
+                    if (!StartFlag)
+                        OutputString.Append(",");
+                    OutputString.Append("'");
+                    OutputString.Append(tempFile);
+                    OutputString.Append("'");
+                    StartFlag = false;
+                }
+                OutputString.Append("}");
+                OutputString.AppendFormat("\n\t.ExecArguments = 'custombuild_{0}'", CustomBuildIndex + 1);
+                var Outputs = Item.Metadata.Where(dmd => dmd.Name == "Outputs");
+                if (Outputs.Any())
+                {
+                    OutputString.AppendFormat("\n\t.ExecOutput = '{0}'", Outputs.First().EvaluatedValue);
+                }
+                OutputString.Append("\n\t.ExecUseStdOutAsOutput = false");
+                if (CustomBuildIndex == -1)
+                {
+                    if (!string.IsNullOrEmpty(PreBuildBatchFile))
+                    {
+                        OutputString.AppendFormat("\n\t.PreBuildDependencies = 'prebuild'");
+                    }
+                }
+                else
+                {
+                    OutputString.AppendFormat("\n\t.PreBuildDependencies = 'custombuild_{0}'", CustomBuildIndex);
+                }
+                OutputString.Append("\n}\n\n");
+
+                CustomBuildIndex += 1;
+                if (CustomBuildIndex > -1 && (FileChanged || CommandLineOptions.AlwaysRegenerate || !File.Exists(CustomBuildBatchFile)))
+                {
+                    File.WriteAllLines(CustomBuildBatchFile, CustomBuildBatchText);
+                }
+            }
+
+            int ActionNumber = 0;
 			foreach (ObjectListNode ObjList in ObjectLists)
 			{
 				OutputString.Append(ObjList.ToStringSplitOverall(ref ActionNumber, ActiveProject.DirectoryPath));
